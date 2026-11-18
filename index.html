@@ -1,0 +1,821 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>PokéBuild — Assistente Idle & PvP</title>
+  <!-- Tailwind CSS para estilização responsiva e moderna -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Fonte Inter -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    body {
+      font-family: 'Inter', system-ui, -apple-system, sans-serif;
+      background-color: #0b0c10;
+      color: #f1f3f9;
+    }
+    /* Custom scrollbar discreta */
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #14161d;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #2a2e3d;
+      border-radius: 9999px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #3f455a;
+    }
+  </style>
+</head>
+<body class="min-h-screen p-4 sm:p-6 md:p-8 selection:bg-indigo-500 selection:text-white">
+  <div class="max-w-4xl mx-auto">
+    
+    <!-- Cabeçalho e Alternador de Modos -->
+    <header class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 pb-5 mb-6 border-b border-[#2a2e3d]">
+      <div class="flex items-center gap-3">
+        <div class="w-9 h-9 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center shadow-lg shadow-indigo-500/20">
+          <div class="w-3.5 h-3.5 rounded-full bg-white border-2 border-[#0b0c10]"></div>
+        </div>
+        <div>
+          <h1 class="text-xl font-extrabold tracking-tight text-white flex items-center gap-2">
+            PokéBuild <span class="text-xs font-medium text-[#8e96aa] bg-[#14161d] border border-[#2a2e3d] px-2 py-0.5 rounded-md">Idle & PvP</span>
+          </h1>
+        </div>
+      </div>
+
+      <!-- Switch de Modos -->
+      <div class="flex w-full sm:w-auto bg-[#14161d] border border-[#2a2e3d] rounded-xl p-1">
+        <button id="btn-mode-single" onclick="trocarModo('single')" class="flex-1 sm:flex-initial px-4 py-2 rounded-lg text-sm font-semibold transition-all bg-[#5865f2] text-white shadow-sm">
+          Consultar Pokémon
+        </button>
+        <button id="btn-mode-compare" onclick="trocarModo('compare')" class="flex-1 sm:flex-initial px-4 py-2 rounded-lg text-sm font-semibold transition-all text-[#8e96aa] hover:text-white">
+          ⚔️ Comparar 1v1
+        </button>
+      </div>
+    </header>
+
+    <!-- ==========================================
+         MODO 1: CONSULTAR POKÉMON
+         ========================================== -->
+    <main id="view-single">
+      <!-- Barra de Busca -->
+      <div class="flex flex-col sm:flex-row gap-2.5 mb-3">
+        <input 
+          type="text" 
+          id="input-poke" 
+          value="garchomp"
+          placeholder="Digite o nome ou nº da Pokédex (ex: garchomp, gengar, 150)..." 
+          onkeydown="if(event.key==='Enter') buscarSingle()"
+          class="flex-1 bg-[#14161d] border border-[#2a2e3d] focus:border-[#5865f2] text-white placeholder-[#8e96aa] px-4 py-3.5 rounded-xl text-sm sm:text-base outline-none transition-colors"
+        />
+        <button onclick="buscarSingle()" class="bg-[#5865f2] hover:bg-[#4752c4] active:scale-[0.99] text-white font-semibold px-6 py-3.5 rounded-xl transition-all cursor-pointer shadow-lg shadow-indigo-500/15">
+          Buscar
+        </button>
+      </div>
+
+      <!-- Chips de Acesso Rápido -->
+      <div id="recentes-box" class="flex flex-wrap items-center gap-2 mb-6"></div>
+
+      <!-- Mensagem de Erro -->
+      <div id="error-box" class="hidden bg-red-500/10 border border-red-500/50 text-red-300 px-4 py-3 rounded-xl mb-5 text-sm"></div>
+
+      <!-- Loader -->
+      <div id="loader" class="hidden flex flex-col items-center justify-center py-16 text-[#8e96aa] gap-3">
+        <div class="w-8 h-8 border-2 border-[#5865f2] border-t-transparent rounded-full animate-spin"></div>
+        <span class="text-sm font-medium">Analisando dados na PokéAPI...</span>
+      </div>
+
+      <!-- Container do Card Principal -->
+      <div id="resultado-single"></div>
+    </main>
+
+    <!-- ==========================================
+         MODO 2: COMPARAR 1v1
+         ========================================== -->
+    <section id="view-compare" class="hidden">
+      <div class="flex flex-col sm:flex-row gap-2.5 mb-5">
+        <input 
+          type="text" 
+          id="input-p1" 
+          value="dragonite"
+          placeholder="Pokémon 1 (ex: dragonite)" 
+          onkeydown="if(event.key==='Enter') buscarComparacao()"
+          class="flex-1 bg-[#14161d] border border-[#2a2e3d] focus:border-[#5865f2] text-white placeholder-[#8e96aa] px-4 py-3.5 rounded-xl text-sm sm:text-base outline-none transition-colors"
+        />
+        <div class="hidden sm:flex items-center justify-center text-[#8e96aa] font-bold text-xs px-1">VS</div>
+        <input 
+          type="text" 
+          id="input-p2" 
+          value="salamence"
+          placeholder="Pokémon 2 (ex: salamence)" 
+          onkeydown="if(event.key==='Enter') buscarComparacao()"
+          class="flex-1 bg-[#14161d] border border-[#2a2e3d] focus:border-[#5865f2] text-white placeholder-[#8e96aa] px-4 py-3.5 rounded-xl text-sm sm:text-base outline-none transition-colors"
+        />
+        <button onclick="buscarComparacao()" class="bg-[#5865f2] hover:bg-[#4752c4] active:scale-[0.99] text-white font-semibold px-6 py-3.5 rounded-xl transition-all cursor-pointer shadow-lg shadow-indigo-500/15">
+          Comparar
+        </button>
+      </div>
+
+      <div id="error-comp" class="hidden bg-red-500/10 border border-red-500/50 text-red-300 px-4 py-3 rounded-xl mb-5 text-sm"></div>
+      <div id="loader-comp" class="hidden flex flex-col items-center justify-center py-16 text-[#8e96aa] gap-3">
+        <div class="w-8 h-8 border-2 border-[#5865f2] border-t-transparent rounded-full animate-spin"></div>
+        <span class="text-sm font-medium">Comparando atributos...</span>
+      </div>
+      <div id="resultado-compare"></div>
+    </section>
+
+  </div>
+
+  <script>
+    // ==========================================
+    // TABELAS DE CORES E FRAQUEZAS DE TIPO
+    // ==========================================
+    const CORES_TIPO = {
+      normal: '#A8A77A', fire: '#EE8130', water: '#6390F0', electric: '#EAB308',
+      grass: '#7AC74C', ice: '#56B9B4', fighting: '#C22E28', poison: '#A33EA1',
+      ground: '#D4AC4B', flying: '#A98FF3', psychic: '#F95587', bug: '#96A815',
+      rock: '#B6A136', ghost: '#735797', dragon: '#6F35FC', dark: '#705746',
+      steel: '#8E8EA8', fairy: '#D685AD'
+    };
+
+    const FRAQUEZAS_TIPO = {
+      normal: { fighting: 2, ghost: 0 },
+      fire: { water: 2, ground: 2, rock: 2, fire: 0.5, grass: 0.5, ice: 0.5, bug: 0.5, steel: 0.5, fairy: 0.5 },
+      water: { electric: 2, grass: 2, fire: 0.5, water: 0.5, ice: 0.5, steel: 0.5 },
+      electric: { ground: 2, electric: 0.5, flying: 0.5, steel: 0.5 },
+      grass: { fire: 2, ice: 2, poison: 2, flying: 2, bug: 2, water: 0.5, electric: 0.5, grass: 0.5, ground: 0.5 },
+      ice: { fire: 2, fighting: 2, rock: 2, steel: 2, ice: 0.5 },
+      fighting: { flying: 2, psychic: 2, fairy: 2, bug: 0.5, rock: 0.5, dark: 0.5 },
+      poison: { ground: 2, psychic: 2, grass: 0.5, fighting: 0.5, poison: 0.5, bug: 0.5, fairy: 0.5 },
+      ground: { water: 2, grass: 2, ice: 2, poison: 0.5, rock: 0.5, electric: 0 },
+      flying: { electric: 2, ice: 2, rock: 2, grass: 0.5, fighting: 0.5, bug: 0.5, ground: 0 },
+      psychic: { bug: 2, ghost: 2, dark: 2, fighting: 0.5, psychic: 0.5 },
+      bug: { fire: 2, flying: 2, rock: 2, grass: 0.5, fighting: 0.5, ground: 0.5 },
+      rock: { water: 2, grass: 2, fighting: 2, ground: 2, steel: 2, normal: 0.5, fire: 0.5, poison: 0.5, flying: 0.5 },
+      ghost: { ghost: 2, dark: 2, poison: 0.5, bug: 0.5, normal: 0, fighting: 0 },
+      dragon: { ice: 2, dragon: 2, fairy: 2, fire: 0.5, water: 0.5, electric: 0.5, grass: 0.5 },
+      dark: { fighting: 2, bug: 2, fairy: 2, ghost: 0.5, dark: 0.5, psychic: 0 },
+      steel: { fire: 2, fighting: 2, ground: 2, normal: 0.5, grass: 0.5, ice: 0.5, flying: 0.5, psychic: 0.5, bug: 0.5, rock: 0.5, dragon: 0.5, steel: 0.5, fairy: 0.5, poison: 0 },
+      fairy: { poison: 2, steel: 2, fighting: 0.5, bug: 0.5, dark: 0.5, dragon: 0 }
+    };
+
+    // Caches em memória para respostas instantâneas
+    const cachePoke = new Map();
+    const cacheMoves = new Map();
+    const cacheEvo = new Map();
+
+    let estadoAtual = { data: null, aba: 'build', shiny: false };
+    let comparacaoCarregada = false;
+
+    // ==========================================
+    // NAVEGAÇÃO ENTRE MODOS E HISTÓRICO
+    // ==========================================
+    function trocarModo(modo) {
+      const isSingle = modo === 'single';
+      document.getElementById('view-single').classList.toggle('hidden', !isSingle);
+      document.getElementById('view-compare').classList.toggle('hidden', isSingle);
+
+      const btnSingle = document.getElementById('btn-mode-single');
+      const btnComp = document.getElementById('btn-mode-compare');
+
+      if (isSingle) {
+        btnSingle.className = 'flex-1 sm:flex-initial px-4 py-2 rounded-lg text-sm font-semibold transition-all bg-[#5865f2] text-white shadow-sm';
+        btnComp.className = 'flex-1 sm:flex-initial px-4 py-2 rounded-lg text-sm font-semibold transition-all text-[#8e96aa] hover:text-white';
+      } else {
+        btnComp.className = 'flex-1 sm:flex-initial px-4 py-2 rounded-lg text-sm font-semibold transition-all bg-[#5865f2] text-white shadow-sm';
+        btnSingle.className = 'flex-1 sm:flex-initial px-4 py-2 rounded-lg text-sm font-semibold transition-all text-[#8e96aa] hover:text-white';
+        if (!comparacaoCarregada) {
+          buscarComparacao();
+        }
+      }
+    }
+
+    const PADRAO_RECENTES = ['garchomp', 'gengar', 'charizard', 'tyranitar', 'rayquaza', 'metagross'];
+
+    function obterRecentes() {
+      try {
+        const salvo = JSON.parse(localStorage.getItem('pokebuild_recentes'));
+        return Array.isArray(salvo) && salvo.length ? salvo : PADRAO_RECENTES;
+      } catch {
+        return PADRAO_RECENTES;
+      }
+    }
+
+    function salvarRecente(nome) {
+      try {
+        let lista = obterRecentes();
+        lista = [nome, ...lista.filter(i => i !== nome)].slice(0, 8);
+        localStorage.setItem('pokebuild_recentes', JSON.stringify(lista));
+      } catch {}
+      renderizarRecentes();
+    }
+
+    function renderizarRecentes() {
+      const lista = obterRecentes();
+      const box = document.getElementById('recentes-box');
+      box.innerHTML = `<span class="text-xs text-[#8e96aa] font-medium mr-1">Rápido:</span>` +
+        lista.map(n => `
+          <button onclick="buscarPorNome('${n}')" class="bg-[#14161d] hover:bg-[#1c1f29] border border-[#2a2e3d] hover:border-[#5865f2] text-[#f1f3f9] px-2.5 py-1 rounded-lg text-xs font-medium capitalize transition-colors cursor-pointer">
+            ${n.replace(/-/g, ' ')}
+          </button>
+        `).join('');
+    }
+
+    // ==========================================
+    // REQUISIÇÕES E INTELIGÊNCIA DE BUILD
+    // ==========================================
+    async function fetchPokemon(query) {
+      const q = query.trim().toLowerCase().replace(/\s+/g, '-');
+      if (cachePoke.has(q)) return cachePoke.get(q);
+      try {
+        const res = await fetch(`https://pokeapi.co/api/v2/pokemon/${q}`);
+        if (!res.ok) return null;
+        const data = await res.json();
+        cachePoke.set(data.name, data);
+        cachePoke.set(String(data.id), data);
+        return data;
+      } catch {
+        return null;
+      }
+    }
+
+    function analisarBuild(statsMap) {
+      const { hp, attack: atk, defense: def, 'special-attack': spa, 'special-defense': spd, speed: spe } = statsMap;
+      const maxDef = Math.max(def, spd);
+      const diff = Math.abs(atk - spa);
+
+      // Atacante Físico
+      if (atk > spa && diff >= 15 && atk >= maxDef) {
+        return spe >= 85
+          ? {
+              funcao: 'Physical Sweeper (Atacante Físico Rápido)',
+              natures: '<strong class="text-white">Jolly</strong> (+Spe / -SpA) ou <strong class="text-white">Adamant</strong> (+Atk / -SpA)',
+              ivs: '1º <strong class="text-emerald-400">Atk (31)</strong> • 2º <strong class="text-emerald-400">Speed (31)</strong> • 3º <strong class="text-white">HP (31)</strong>',
+              evs: '252 Atk / 252 Spe / 4 HP',
+              itens: [
+                '<strong>Life Orb</strong> (+30% de dano em todos os golpes)',
+                '<strong>Choice Band</strong> (+50% Atk, trava em 1 golpe)',
+                '<strong>Choice Scarf</strong> (+50% Speed para atacar primeiro)',
+                '<strong>Focus Sash</strong> (sobrevive a 1 hit fatal com 1 HP)'
+              ],
+              estilo: 'physical'
+            }
+          : {
+              funcao: 'Physical Bruiser (Atacante Físico Pesado)',
+              natures: '<strong class="text-white">Adamant</strong> (+Atk / -SpA) ou <strong class="text-white">Brave</strong> (+Atk / -Spe)',
+              ivs: '1º <strong class="text-emerald-400">Atk (31)</strong> • 2º <strong class="text-emerald-400">HP (31)</strong> • 3º <strong class="text-white">Def / SpD (31)</strong>',
+              evs: '252 HP / 252 Atk / 4 Def',
+              itens: [
+                '<strong>Leftovers</strong> (cura passiva de HP todo turno)',
+                '<strong>Assault Vest</strong> (+50% SpD, usa apenas ataques)',
+                '<strong>Choice Band</strong> (+50% Atk bruto)',
+                '<strong>Weakness Policy</strong> (+2 Atk/SpA ao levar super efetivo)'
+              ],
+              estilo: 'physical'
+            };
+      }
+
+      // Atacante Especial
+      if (spa > atk && diff >= 15 && spa >= maxDef) {
+        return spe >= 85
+          ? {
+              funcao: 'Special Sweeper (Atacante Especial Rápido)',
+              natures: '<strong class="text-white">Timid</strong> (+Spe / -Atk) ou <strong class="text-white">Modest</strong> (+SpA / -Atk)',
+              ivs: '1º <strong class="text-emerald-400">SpA (31)</strong> • 2º <strong class="text-emerald-400">Speed (31)</strong> • 3º <strong class="text-white">HP (31)</strong>',
+              evs: '252 SpA / 252 Spe / 4 HP',
+              itens: [
+                '<strong>Life Orb</strong> (+30% de dano geral)',
+                '<strong>Choice Specs</strong> (+50% SpA, trava em 1 golpe)',
+                '<strong>Choice Scarf</strong> (+50% Speed)',
+                '<strong>Focus Sash</strong> (garante sobreviver ao 1º turno)'
+              ],
+              estilo: 'special'
+            }
+          : {
+              funcao: 'Special Wallbreaker (Atacante Especial Pesado)',
+              natures: '<strong class="text-white">Modest</strong> (+SpA / -Atk) ou <strong class="text-white">Quiet</strong> (+SpA / -Spe)',
+              ivs: '1º <strong class="text-emerald-400">SpA (31)</strong> • 2º <strong class="text-emerald-400">HP (31)</strong> • 3º <strong class="text-white">Def / SpD (31)</strong>',
+              evs: '252 HP / 252 SpA / 4 SpD',
+              itens: [
+                '<strong>Choice Specs</strong> (+50% SpA)',
+                '<strong>Leftovers</strong> (sustentação em lutas longas)',
+                '<strong>Assault Vest</strong> (+50% SpD)',
+                '<strong>Expert Belt</strong> (+20% em golpes super efetivos)'
+              ],
+              estilo: 'special'
+            };
+      }
+
+      // Atacante Misto
+      if (diff < 15 && Math.max(atk, spa) >= maxDef) {
+        return {
+          funcao: 'Mixed Attacker (Atacante Misto)',
+          natures: '<strong class="text-white">Naive</strong> (+Spe / -SpD) ou <strong class="text-white">Hasty</strong> (+Spe / -Def)',
+          ivs: '1º <strong class="text-emerald-400">Speed (31)</strong> • 2º <strong class="text-emerald-400">Atk & SpA (31)</strong> • 3º <strong class="text-white">HP (31)</strong>',
+          evs: '128 Atk / 128 SpA / 252 Spe',
+          itens: [
+            '<strong>Life Orb</strong> (aumenta dano Físico e Especial)',
+            '<strong>Expert Belt</strong> (+20% em super efetivos)',
+            '<strong>Focus Sash</strong> (sobrevive com 1 HP)'
+          ],
+          estilo: 'mixed'
+        };
+      }
+
+      // Tanque Físico
+      if (def >= spd) {
+        return {
+          funcao: 'Physical Wall (Tanque Físico / Suporte)',
+          natures: '<strong class="text-white">Impish</strong> (+Def / -SpA) ou <strong class="text-white">Bold</strong> (+Def / -Atk)',
+          ivs: '1º <strong class="text-emerald-400">HP (31)</strong> • 2º <strong class="text-emerald-400">Def (31)</strong> • 3º <strong class="text-white">SpD (31)</strong>',
+          evs: '252 HP / 252 Def / 4 SpD',
+          itens: [
+            '<strong>Leftovers</strong> (cura passiva todo turno)',
+            '<strong>Rocky Helmet</strong> (reflete dano em quem ataca físico)',
+            '<strong>Eviolite</strong> (+50% Def/SpD se ainda puder evoluir)',
+            '<strong>Heavy-Duty Boots</strong> (ignora hazards de entrada)'
+          ],
+          estilo: atk >= spa ? 'physical' : 'special'
+        };
+      }
+
+      // Tanque Especial
+      return {
+        funcao: 'Special Wall (Tanque Especial / Suporte)',
+        natures: '<strong class="text-white">Calm</strong> (+SpD / -Atk) ou <strong class="text-white">Careful</strong> (+SpD / -SpA)',
+        ivs: '1º <strong class="text-emerald-400">HP (31)</strong> • 2º <strong class="text-emerald-400">SpD (31)</strong> • 3º <strong class="text-white">Def (31)</strong>',
+        evs: '252 HP / 252 SpD / 4 Def',
+        itens: [
+          '<strong>Leftovers</strong> (cura passiva todo turno)',
+          '<strong>Assault Vest</strong> (+50% SpD)',
+          '<strong>Eviolite</strong> (+50% Def/SpD se ainda puder evoluir)',
+          '<strong>Sitrus Berry</strong> (cura 25% do HP ao ficar abaixo de 50%)'
+        ],
+        estilo: atk >= spa ? 'physical' : 'special'
+      };
+    }
+
+    function calcularFraquezas(tipos) {
+      const todos = Object.keys(FRAQUEZAS_TIPO);
+      const mult = {};
+      for (const atk of todos) {
+        let f = 1;
+        for (const def of tipos) {
+          if (FRAQUEZAS_TIPO[def]?.[atk] !== undefined) f *= FRAQUEZAS_TIPO[def][atk];
+        }
+        mult[atk] = f;
+      }
+      return {
+        x4: todos.filter(t => mult[t] === 4),
+        x2: todos.filter(t => mult[t] === 2),
+        imune: todos.filter(t => mult[t] === 0)
+      };
+    }
+
+    async function buscarGolpes(data, estilo) {
+      const tiposPoke = new Set(data.types.map(t => t.type.name));
+      const candidatos = data.moves
+        .filter(m => m.version_group_details.some(v => ['level-up', 'machine'].includes(v.move_learn_method.name)))
+        .slice(0, 48);
+
+      const detalhes = await Promise.all(candidatos.map(async m => {
+        if (cacheMoves.has(m.move.url)) return cacheMoves.get(m.move.url);
+        try {
+          const r = await fetch(m.move.url);
+          if (!r.ok) return null;
+          const d = await r.json();
+          const info = {
+            nome: d.name.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase()),
+            tipo: d.type.name,
+            cat: d.damage_class.name,
+            poder: d.power || 0
+          };
+          cacheMoves.set(m.move.url, info);
+          return info;
+        } catch {
+          return null;
+        }
+      }));
+
+      const validos = detalhes.filter(Boolean);
+      const ofensivos = validos
+        .filter(g => g.poder >= 60 && (estilo === 'mixed' || g.cat === estilo))
+        .map(g => ({ ...g, stab: tiposPoke.has(g.tipo), real: tiposPoke.has(g.tipo) ? g.poder * 1.5 : g.poder }))
+        .sort((a, b) => b.real - a.real)
+        .slice(0, 6);
+
+      const listaBuffs = [
+        'Swords Dance', 'Dragon Dance', 'Nasty Plot', 'Calm Mind', 'Bulk Up',
+        'Recover', 'Roost', 'Synthesis', 'Soft Boiled', 'Protect', 'Toxic',
+        'Will O Wisp', 'Thunder Wave', 'Spore', 'Stealth Rock', 'Tailwind',
+        'Shell Smash', 'Quiver Dance', 'Defog', 'Substitute'
+      ];
+
+      const buffs = validos
+        .filter(g => g.cat === 'status' && listaBuffs.includes(g.nome))
+        .slice(0, 5);
+
+      return { ofensivos, buffs };
+    }
+
+    async function buscarEvolucoes(data) {
+      if (cacheEvo.has(data.id)) return cacheEvo.get(data.id);
+      try {
+        const sp = await (await fetch(data.species.url)).json();
+        const ev = await (await fetch(sp.evolution_chain.url)).json();
+        const lista = [];
+
+        function walk(no, lvl = 1) {
+          const nome = no.species.name.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+          const det = no.evolution_details?.[0];
+          let req = '';
+          if (det) {
+            const p = [];
+            if (det.min_level) p.push(`Nv. ${det.min_level}`);
+            if (det.item) p.push(`Usar ${det.item.name.replace(/-/g, ' ')}`);
+            if (det.trigger?.name === 'trade') p.push('Troca');
+            if (det.min_happiness) p.push(`Felicidade ${det.min_happiness}+`);
+            if (det.time_of_day) p.push(`(${det.time_of_day})`);
+            if (det.known_move) p.push(`Golpe ${det.known_move.name.replace(/-/g, ' ')}`);
+            req = p.length ? ` <span class="text-xs text-[#8e96aa]">(${p.join(', ')})</span>` : '';
+          }
+          lista.push(`${lvl > 1 ? '<span class="text-indigo-400 mr-1">↳</span>' : '<span class="text-indigo-400 mr-1">●</span>'}<strong class="text-white">${nome}</strong>${req}`);
+          no.evolves_to.forEach(c => walk(c, lvl + 1));
+        }
+
+        walk(ev.chain);
+        const res = lista.length > 1 ? lista : ['Este Pokémon não possui evoluções.'];
+        cacheEvo.set(data.id, res);
+        return res;
+      } catch {
+        return ['Não foi possível carregar a cadeia evolutiva.'];
+      }
+    }
+
+    // ==========================================
+    // CONTROLADORES DA CONSULTA PRINCIPAL
+    // ==========================================
+    function buscarPorNome(nome) {
+      document.getElementById('input-poke').value = nome;
+      buscarSingle();
+    }
+
+    async function buscarSingle() {
+      const input = document.getElementById('input-poke').value;
+      if (!input.trim()) return;
+
+      const errBox = document.getElementById('error-box');
+      const loader = document.getElementById('loader');
+      errBox.classList.add('hidden');
+      loader.classList.remove('hidden');
+
+      const data = await fetchPokemon(input);
+      loader.classList.add('hidden');
+
+      if (!data) {
+        errBox.textContent = `❌ Pokémon "${input}" não encontrado. Verifique a ortografia em inglês (ex: roaring-moon, flutter-mane).`;
+        errBox.classList.remove('hidden');
+        return;
+      }
+
+      salvarRecente(data.name);
+      estadoAtual = { data, aba: 'build', shiny: false };
+      renderizarCardSingle();
+    }
+
+    function mudarAba(aba) {
+      estadoAtual.aba = aba;
+      renderizarCardSingle();
+    }
+
+    function toggleShiny() {
+      estadoAtual.shiny = !estadoAtual.shiny;
+      renderizarCardSingle();
+    }
+
+    async function renderizarCardSingle() {
+      const { data, aba, shiny } = estadoAtual;
+      if (!data) return;
+
+      const container = document.getElementById('resultado-single');
+      const id = String(data.id).padStart(3, '0');
+      const nome = data.name.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+      const tipos = data.types.map(t => t.type.name);
+      const corPrincipal = CORES_TIPO[tipos[0]] || '#5865f2';
+
+      const statsMap = {};
+      let bst = 0;
+      data.stats.forEach(s => {
+        statsMap[s.stat.name] = s.base_stat;
+        bst += s.base_stat;
+      });
+
+      const build = analisarBuild(statsMap);
+      const fraq = calcularFraquezas(tipos);
+
+      const art = data.sprites.other['official-artwork'];
+      const fallbackSprite = shiny ? data.sprites.front_shiny : data.sprites.front_default;
+      const sprite = (shiny ? (art.front_shiny || fallbackSprite) : (art.front_default || fallbackSprite)) || '';
+
+      const habilidades = data.abilities.map(a => {
+        const h = a.ability.name.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+        return a.is_hidden ? `<span class="text-indigo-300">${h} <em class="text-xs text-[#8e96aa]">(Oculta)</em></span>` : `<span class="text-white">${h}</span>`;
+      }).join(', ');
+
+      // Renderiza cabeçalho e estrutura de abas imediatamente
+      const abasConfig = [
+        { id: 'build', label: '🎯 Nature & IVs' },
+        { id: 'moves', label: '💥 Melhores Ataques' },
+        { id: 'evo', label: '🧬 Evolução & Itens' },
+        { id: 'stats', label: '📊 Status' }
+      ];
+
+      container.innerHTML = `
+        <div class="bg-[#14161d] border border-[#2a2e3d] rounded-2xl overflow-hidden shadow-2xl" style="border-left: 5px solid ${corPrincipal}">
+          <!-- Header do Card -->
+          <div class="flex flex-col sm:flex-row justify-between items-center p-6 bg-[#1c1f29] gap-6">
+            <div class="w-full sm:w-auto text-center sm:text-left">
+              <div class="flex items-center justify-center sm:justify-start gap-2.5">
+                <span class="text-lg font-bold text-[#8e96aa]">#${id}</span>
+                <h2 class="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">${nome} ${shiny ? '✨' : ''}</h2>
+              </div>
+              
+              <div class="flex flex-wrap items-center justify-center sm:justify-start gap-2 mt-2.5">
+                ${tipos.map(t => `<span class="px-2.5 py-1 rounded-md text-xs font-bold uppercase tracking-wider text-white shadow-sm" style="background:${CORES_TIPO[t]}">${t}</span>`).join('')}
+                <span class="px-2.5 py-1 rounded-md text-xs font-bold uppercase tracking-wider text-[#f1f3f9] bg-[#0b0c10] border border-[#2a2e3d]">BST ${bst}</span>
+              </div>
+
+              <div class="mt-3 text-sm text-[#8e96aa]">
+                <strong class="text-white font-semibold">Habilidades:</strong> ${habilidades}
+              </div>
+            </div>
+
+            <!-- Sprite & Botão Shiny -->
+            <div class="flex flex-col items-center gap-2 shrink-0">
+              <div class="w-28 h-28 sm:w-32 sm:h-32 flex items-center justify-center bg-[#14161d]/60 rounded-2xl border border-[#2a2e3d]/60 p-2">
+                <img src="${sprite}" alt="${nome}" class="w-full h-full object-contain drop-shadow-[0_6px_12px_rgba(0,0,0,0.6)] transition-transform duration-300 hover:scale-105" />
+              </div>
+              <button onclick="toggleShiny()" class="px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all cursor-pointer ${shiny ? 'bg-yellow-500/15 border-yellow-500/60 text-yellow-300' : 'bg-[#14161d] border-[#2a2e3d] text-[#8e96aa] hover:text-white'}">
+                ✨ ${shiny ? 'Ver Normal' : 'Ver Shiny'}
+              </button>
+            </div>
+          </div>
+
+          <!-- Navegação de Sub-Abas -->
+          <div class="flex border-b border-[#2a2e3d] bg-[#14161d] overflow-x-auto">
+            ${abasConfig.map(tab => `
+              <button onclick="mudarAba('${tab.id}')" class="flex-1 px-4 py-3.5 text-xs sm:text-sm font-semibold whitespace-nowrap border-b-2 transition-all cursor-pointer ${aba === tab.id ? 'text-white border-[#5865f2] bg-[#5865f2]/10' : 'text-[#8e96aa] border-transparent hover:text-white hover:bg-[#1c1f29]/50'}">
+                ${tab.label}
+              </button>
+            `).join('')}
+          </div>
+
+          <!-- Corpo Dinâmico -->
+          <div id="card-dynamic-body" class="p-5 sm:p-6">
+            <div class="flex items-center justify-center py-8 text-[#8e96aa] text-sm gap-2">
+              <div class="w-4 h-4 border-2 border-[#5865f2] border-t-transparent rounded-full animate-spin"></div>
+              Carregando...
+            </div>
+          </div>
+        </div>
+      `;
+
+      const bodyEl = document.getElementById('card-dynamic-body');
+      if (!bodyEl) return;
+
+      if (aba === 'build') {
+        const badgeTipo = t => `<span class="inline-block px-2 py-0.5 rounded text-[11px] font-bold uppercase text-white" style="background:${CORES_TIPO[t]}">${t}</span>`;
+        bodyEl.innerHTML = `
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div class="bg-[#1c1f29] border border-[#2a2e3d] rounded-xl p-5">
+              <h3 class="text-xs font-bold uppercase tracking-wider text-[#8e96aa] mb-3.5">🎯 Build Recomendada (Idle / PvP)</h3>
+              <ul class="space-y-3 text-sm text-[#d1d5db]">
+                <li><strong class="text-white">Função:</strong> ${build.funcao}</li>
+                <li><strong class="text-white">Melhor Nature:</strong> ${build.natures}</li>
+                <li><strong class="text-white">Prioridade de IVs:</strong> ${build.ivs}</li>
+                <li><strong class="text-white">Foco de EVs:</strong> <code class="bg-[#0b0c10] px-2 py-0.5 rounded text-indigo-300 border border-[#2a2e3d]">${build.evs}</code></li>
+              </ul>
+            </div>
+
+            <div class="bg-[#1c1f29] border border-[#2a2e3d] rounded-xl p-5">
+              <h3 class="text-xs font-bold uppercase tracking-wider text-[#8e96aa] mb-3.5">🛡️ Fraquezas & Imunidades</h3>
+              <ul class="space-y-3 text-sm">
+                ${fraq.x4.length ? `<li class="flex flex-wrap items-center gap-1.5"><strong class="text-red-400 mr-1">Dano 4x:</strong> ${fraq.x4.map(badgeTipo).join('')}</li>` : ''}
+                ${fraq.x2.length ? `<li class="flex flex-wrap items-center gap-1.5"><strong class="text-amber-300 mr-1">Dano 2x:</strong> ${fraq.x2.map(badgeTipo).join('')}</li>` : ''}
+                ${fraq.imune.length ? `<li class="flex flex-wrap items-center gap-1.5"><strong class="text-emerald-400 mr-1">Imune (0x):</strong> ${fraq.imune.map(badgeTipo).join('')}</li>` : ''}
+                ${!fraq.x4.length && !fraq.x2.length ? `<li class="text-[#8e96aa]">Nenhuma fraqueza direta.</li>` : ''}
+              </ul>
+            </div>
+          </div>
+        `;
+      } else if (aba === 'moves') {
+        const { ofensivos, buffs } = await buscarGolpes(data, build.estilo);
+        if (estadoAtual.aba !== 'moves' || estadoAtual.data.id !== data.id) return;
+
+        bodyEl.innerHTML = `
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div class="bg-[#1c1f29] border border-[#2a2e3d] rounded-xl p-5">
+              <h3 class="text-xs font-bold uppercase tracking-wider text-[#8e96aa] mb-3.5">💥 Melhores Ataques</h3>
+              <div class="space-y-2">
+                ${ofensivos.length ? ofensivos.map(g => `
+                  <div class="flex justify-between items-center p-2.5 bg-[#0b0c10] border border-[#2a2e3d] rounded-lg text-sm">
+                    <div class="flex items-center gap-2 flex-wrap">
+                      <span class="px-2 py-0.5 rounded text-[10px] font-bold uppercase text-white" style="background:${CORES_TIPO[g.tipo]}">${g.tipo}</span>
+                      <strong class="text-white">${g.nome}</strong>
+                      ${g.stab ? '<span class="bg-emerald-500/15 text-emerald-400 border border-emerald-500/40 text-[10px] px-1.5 py-0.5 rounded font-bold">STAB</span>' : ''}
+                    </div>
+                    <span class="text-xs text-[#8e96aa] shrink-0 ml-2">${g.cat === 'physical' ? '⚔️ Fís' : '🔮 Esp'} • <strong class="text-white text-sm">${g.poder}</strong></span>
+                  </div>
+                `).join('') : '<p class="text-sm text-[#8e96aa]">Nenhum ataque ofensivo encontrado.</p>'}
+              </div>
+            </div>
+
+            <div class="bg-[#1c1f29] border border-[#2a2e3d] rounded-xl p-5">
+              <h3 class="text-xs font-bold uppercase tracking-wider text-[#8e96aa] mb-3.5">✨ Buffs & Suporte</h3>
+              <div class="space-y-2">
+                ${buffs.length ? buffs.map(b => `
+                  <div class="flex items-center gap-2 p-2.5 bg-[#0b0c10] border border-[#2a2e3d] rounded-lg text-sm">
+                    <span class="px-2 py-0.5 rounded text-[10px] font-bold uppercase text-white" style="background:${CORES_TIPO[b.tipo]}">${b.tipo}</span>
+                    <strong class="text-white">${b.nome}</strong>
+                  </div>
+                `).join('') : '<p class="text-sm text-[#8e96aa]">Nenhum golpe de buff principal registrado.</p>'}
+              </div>
+            </div>
+          </div>
+        `;
+      } else if (aba === 'evo') {
+        const evos = await buscarEvolucoes(data);
+        if (estadoAtual.aba !== 'evo' || estadoAtual.data.id !== data.id) return;
+
+        bodyEl.innerHTML = `
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div class="bg-[#1c1f29] border border-[#2a2e3d] rounded-xl p-5">
+              <h3 class="text-xs font-bold uppercase tracking-wider text-[#8e96aa] mb-3.5">🧬 Linha Evolutiva</h3>
+              <ul class="space-y-2.5 text-sm text-[#d1d5db]">
+                ${evos.map(e => `<li>${e}</li>`).join('')}
+              </ul>
+            </div>
+
+            <div class="bg-[#1c1f29] border border-[#2a2e3d] rounded-xl p-5">
+              <h3 class="text-xs font-bold uppercase tracking-wider text-[#8e96aa] mb-3.5">🎒 Melhores Held Items</h3>
+              <ul class="space-y-2.5 text-sm text-[#d1d5db]">
+                ${build.itens.map(i => `<li class="flex items-start gap-2"><span class="text-indigo-400">•</span><span>${i}</span></li>`).join('')}
+              </ul>
+            </div>
+          </div>
+        `;
+      } else if (aba === 'stats') {
+        const labels = {
+          hp: 'HP',
+          attack: 'ATK',
+          defense: 'DEF',
+          'special-attack': 'SPA',
+          'special-defense': 'SPD',
+          speed: 'SPE'
+        };
+
+        bodyEl.innerHTML = `
+          <div class="bg-[#1c1f29] border border-[#2a2e3d] rounded-xl p-5">
+            <div class="flex justify-between items-center mb-4">
+              <h3 class="text-xs font-bold uppercase tracking-wider text-[#8e96aa]">📊 Status Base</h3>
+              <span class="text-xs font-bold text-white bg-[#0b0c10] border border-[#2a2e3d] px-2.5 py-1 rounded-md">BST Total: ${bst}</span>
+            </div>
+            <div class="space-y-3">
+              ${data.stats.map(s => {
+                const pct = Math.min(100, Math.round((s.base_stat / 200) * 100));
+                const cor = s.base_stat >= 110 ? '#22c55e' : s.base_stat >= 80 ? '#5865f2' : '#eab308';
+                return `
+                  <div class="grid grid-cols-[44px_38px_1fr] items-center gap-3 text-sm">
+                    <span class="text-xs font-bold text-[#8e96aa]">${labels[s.stat.name]}</span>
+                    <span class="font-bold text-right text-white">${s.base_stat}</span>
+                    <div class="w-full h-2.5 bg-[#0b0c10] rounded-full overflow-hidden">
+                      <div class="h-full rounded-full transition-all duration-500" style="width:${pct}%; background:${cor}"></div>
+                    </div>
+                  </div>
+                `;
+              }).join('')}
+            </div>
+          </div>
+        `;
+      }
+    }
+
+    // ==========================================
+    // CONTROLADOR DA COMPARAÇÃO 1v1
+    // ==========================================
+    async function buscarComparacao() {
+      const q1 = document.getElementById('input-p1').value;
+      const q2 = document.getElementById('input-p2').value;
+      const err = document.getElementById('error-comp');
+      const loader = document.getElementById('loader-comp');
+      err.classList.add('hidden');
+
+      if (!q1.trim() || !q2.trim()) return;
+
+      loader.classList.remove('hidden');
+      const [p1, p2] = await Promise.all([fetchPokemon(q1), fetchPokemon(q2)]);
+      loader.classList.add('hidden');
+
+      if (!p1 || !p2) {
+        err.textContent = '❌ Não foi possível encontrar um dos Pokémon. Verifique os nomes em inglês.';
+        err.classList.remove('hidden');
+        return;
+      }
+
+      comparacaoCarregada = true;
+
+      const extrair = p => {
+        const map = {};
+        let bst = 0;
+        p.stats.forEach(s => {
+          map[s.stat.name] = s.base_stat;
+          bst += s.base_stat;
+        });
+        const natureSimples = analisarBuild(map).natures.replace(/<[^>]*>/g, '').split(' ou ')[0];
+        return {
+          map,
+          bst,
+          nature: natureSimples,
+          tipos: p.types.map(t => t.type.name),
+          sprite: p.sprites.other['official-artwork'].front_default || p.sprites.front_default,
+          nome: p.name.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase())
+        };
+      };
+
+      const d1 = extrair(p1);
+      const d2 = extrair(p2);
+      const attrs = [
+        ['HP', 'hp'],
+        ['ATK', 'attack'],
+        ['DEF', 'defense'],
+        ['SPA', 'special-attack'],
+        ['SPD', 'special-defense'],
+        ['SPE', 'speed']
+      ];
+
+      document.getElementById('resultado-compare').innerHTML = `
+        <div class="bg-[#14161d] border border-[#2a2e3d] rounded-2xl p-5 sm:p-6 shadow-2xl">
+          <!-- Cabeçalho dos 2 Pokémon -->
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-5">
+            <!-- Card Pokémon 1 -->
+            <div class="bg-[#1c1f29] border ${d1.bst > d2.bst ? 'border-emerald-500/40' : 'border-[#2a2e3d]'} rounded-xl p-4 flex flex-col items-center text-center">
+              <img src="${d1.sprite}" alt="${d1.nome}" class="w-24 h-24 object-contain drop-shadow-md mb-2" />
+              <h2 class="text-lg font-extrabold text-white flex items-center gap-1.5">
+                ${d1.nome} ${d1.bst > d2.bst ? '<span title="Maior BST">🏆</span>' : ''}
+              </h2>
+              <div class="flex gap-1.5 my-1.5">
+                ${d1.tipos.map(t => `<span class="px-2 py-0.5 rounded text-[10px] font-bold uppercase text-white" style="background:${CORES_TIPO[t]}">${t}</span>`).join('')}
+              </div>
+              <p class="text-xs text-[#8e96aa] mt-1">
+                BST: <strong class="${d1.bst >= d2.bst ? 'text-emerald-400' : 'text-white'}">${d1.bst}</strong> • ${d1.nature}
+              </p>
+            </div>
+
+            <!-- Card Pokémon 2 -->
+            <div class="bg-[#1c1f29] border ${d2.bst > d1.bst ? 'border-emerald-500/40' : 'border-[#2a2e3d]'} rounded-xl p-4 flex flex-col items-center text-center">
+              <img src="${d2.sprite}" alt="${d2.nome}" class="w-24 h-24 object-contain drop-shadow-md mb-2" />
+              <h2 class="text-lg font-extrabold text-white flex items-center gap-1.5">
+                ${d2.nome} ${d2.bst > d1.bst ? '<span title="Maior BST">🏆</span>' : ''}
+              </h2>
+              <div class="flex gap-1.5 my-1.5">
+                ${d2.tipos.map(t => `<span class="px-2 py-0.5 rounded text-[10px] font-bold uppercase text-white" style="background:${CORES_TIPO[t]}">${t}</span>`).join('')}
+              </div>
+              <p class="text-xs text-[#8e96aa] mt-1">
+                BST: <strong class="${d2.bst >= d1.bst ? 'text-emerald-400' : 'text-white'}">${d2.bst}</strong> • ${d2.nature}
+              </p>
+            </div>
+          </div>
+
+          <!-- Tabela Comparativa -->
+          <div class="bg-[#1c1f29] border border-[#2a2e3d] rounded-xl px-4 py-2">
+            ${attrs.map(([lbl, k]) => {
+              const v1 = d1.map[k], v2 = d2.map[k];
+              const c1 = v1 > v2 ? 'text-emerald-400 font-extrabold text-base' : v1 === v2 ? 'text-amber-300 font-bold' : 'text-[#8e96aa] font-medium';
+              const c2 = v2 > v1 ? 'text-emerald-400 font-extrabold text-base' : v1 === v2 ? 'text-amber-300 font-bold' : 'text-[#8e96aa] font-medium';
+              return `
+                <div class="grid grid-cols-3 items-center py-2.5 border-b border-[#2a2e3d] last:border-none text-center text-sm">
+                  <span class="${c1}">${v1}</span>
+                  <span class="text-xs font-bold text-[#8e96aa] tracking-wider">${lbl}</span>
+                  <span class="${c2}">${v2}</span>
+                </div>
+              `;
+            }).join('')}
+          </div>
+        </div>
+      `;
+    }
+
+    // Inicialização automática com Garchomp para preview imediato
+    window.addEventListener('DOMContentLoaded', () => {
+      renderizarRecentes();
+      buscarSingle();
+    });
+  </script>
+</body>
+</html>
